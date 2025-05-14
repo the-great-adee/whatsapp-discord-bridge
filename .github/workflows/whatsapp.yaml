@@ -1,0 +1,41 @@
+name: WhatsApp to Discord Bridge
+
+on:
+  schedule:
+    - cron: "0 4 * * *" # 9:30 AM IST
+    - cron: "30 12 * * *" # 6:00 PM IST
+  workflow_dispatch:
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Restore last state
+        uses: actions/download-artifact@v4
+        with:
+          name: state
+          path: .
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: Install requirements
+        run: pip install -r requirements.txt
+
+      - name: Run WhatsApp script
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          CHAT_FILTER: ${{ secrets.CHAT_FILTER }} # e.g. "Mom,Project Team"
+        run: python script.py
+
+      - name: Save state
+        uses: actions/upload-artifact@v4
+        with:
+          name: state
+          path: state.json
