@@ -1,8 +1,11 @@
 import os, time, json, requests
 from selenium import webdriver
 from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.options import Options
-from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.firefox.options import Options as FirefoxOptions
+from selenium.webdriver.firefox.service import Service as FirefoxService
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from webdriver_manager.firefox import GeckoDriverManager
 
 DISCORD_WEBHOOK = os.getenv("DISCORD_WEBHOOK")
 CHATS = os.getenv("CHAT_FILTER", "").split(",")
@@ -16,12 +19,11 @@ def save_state(state):
         json.dump(state, f)
 
 def setup_driver():
-    options = Options()
-    options.add_argument("--headless=new")
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
-    options.add_argument("--user-data-dir=/tmp/chrome-profile")  # persistent session
-    return webdriver.Chrome(ChromeDriverManager().install(), options=options)
+    options = FirefoxOptions()
+    # options.add_argument("--headless")  # Comment this to keep the browser visible
+    options.set_preference("dom.webnotifications.enabled", False)
+    service = FirefoxService(GeckoDriverManager().install())
+    return webdriver.Firefox(service=service, options=options)
 
 def send_to_discord(chat, message):
     payload = {"content": f"📥 New message in *{chat}*:\n{message}"}
@@ -33,26 +35,40 @@ def main():
 
     try:
         driver.get("https://web.whatsapp.com")
-        time.sleep(15)  # wait for QR scan or auto-login
+        print("🔒 Waiting for QR code to be scanned...")
 
-        for chat in CHATS:
-            try:
-                chat = chat.strip()
-                if not chat: continue
+        WebDriverWait(driver, 180).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, "div[tabindex='-1']"))
+        )
+        print("✅ Logged in. Monitoring chats... (Press Ctrl+C to stop)")
 
-                search = driver.find_element(By.XPATH, f'//span[@title="{chat}"]')
-                search.click()
-                time.sleep(2)
+        while True:
+            for chat in CHATS:
+                try:
+                    chat = chat.strip()
+                    if not chat:
+                        continue
 
-                messages = driver.find_elements(By.CSS_SELECTOR, 'div.message-in span.selectable-text')
-                if messages:
-                    last_msg = messages[-1].text.strip()
-                    if last_msg and last_msg != state.get(chat):
-                        send_to_discord(chat, last_msg)
-                        state[chat] = last_msg
+                    search = driver.find_element(By.XPATH, f'//span[@title="{chat}"]')
+                    search.click()
+                    time.sleep(2)
 
-            except Exception as e:
-                print(f"Error processing chat '{chat}':", str(e))
+                    messages = driver.find_elements(By.CSS_SELECTOR, 'div.message-in span.selectable-text')
+                    if messages:
+                        last_msg = messages[-1].text.strip()
+                        if last_msg and last_msg != state.get(chat):
+                            print(f"[{chat}] New message: {last_msg}")
+                            send_to_discord(chat, last_msg)
+                            state[chat] = last_msg
+
+                except Exception as e:
+                    print(f"⚠️ Error processing chat '{chat}': {str(e)}")
+
+            save_state(state)
+            time.sleep(30)  # check every 30 seconds
+
+    except KeyboardInterrupt:
+        print("\n👋 Exiting on user request.")
 
     finally:
         save_state(state)
