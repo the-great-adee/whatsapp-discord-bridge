@@ -1,41 +1,48 @@
-name: WhatsApp to Discord Bridge
+# name: WhatsApp to Discord Bridge
+# This defines the name of the GitHub Actions workflow.
 
-on:
-  schedule:
-    - cron: "0 4 * * *" # 9:30 AM IST
-    - cron: "30 12 * * *" # 6:00 PM IST
-  workflow_dispatch:
+# on:
+#   schedule:
+#     - cron: "0 4 * * *" # 9:30 AM IST
+#     - cron: "30 12 * * *" # 6:00 PM IST
+#   workflow_dispatch:
+# This section defines the triggers for the workflow:
+# - `schedule`: Defines cron-based schedule for when the workflow runs.
+#   - The first cron expression runs the workflow at 4:00 AM UTC (9:30 AM IST).
+#   - The second cron expression runs the workflow at 12:30 PM UTC (6:00 PM IST).
+# - `workflow_dispatch`: Allows the workflow to be manually triggered from GitHub's UI.
 
-jobs:
-  run:
-    runs-on: ubuntu-latest
+# jobs:
+#   run:
+#     runs-on: ubuntu-latest  # The workflow will run on the latest Ubuntu runner.
 
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
+#     steps:
+#       - name: Checkout
+#         uses: actions/checkout@v3
+#         # This step checks out the code from the repository so the workflow can use it.
 
-      - name: Restore last state
-        uses: actions/download-artifact@v4
-        with:
-          name: state
-          path: .
+#       - name: Restore last state
+#         uses: actions/download-artifact@v4
+#         with:
+#           name: state  # Specifies the name of the artifact (state) to download.
+#           path: .      # Downloads the artifact to the current directory.
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.11"
+#       - name: Set up Python
+#         uses: actions/setup-python@v4
+#         with:
+#           python-version: "3.11"  # This step sets up Python version 3.11.
 
-      - name: Install requirements
-        run: pip install -r requirements.txt
+#       - name: Install requirements
+#         run: pip install -r requirements.txt  # Installs dependencies from the requirements.txt file.
 
-      - name: Run WhatsApp script
-        env:
-          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
-          CHAT_FILTER: ${{ secrets.CHAT_FILTER }} # e.g. "Mom,Project Team"
-        run: python script.py
+#       - name: Run WhatsApp script
+#         env:
+#           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}  # Fetches the Discord webhook URL from GitHub Secrets.
+#           CHAT_FILTER: ${{ secrets.CHAT_FILTER }}  # Fetches the chat filter (e.g., "Mom,Project Team") from GitHub Secrets.
+#         run: python script.py  # Runs the Python script that bridges WhatsApp messages to Discord.
 
-      - name: Save state
-        uses: actions/upload-artifact@v4
-        with:
-          name: state
-          path: state.json
+#       - name: Save state
+#         uses: actions/upload-artifact@v4
+#         with:
+#           name: state  # The name of the artifact to upload.
+#           path: state.json  # The file (state.json) to upload as the artifact for later use.
